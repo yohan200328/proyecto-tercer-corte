@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-# Constantes de Negocio (Eliminación de números mágicos)
+# Constantes de Negocio
 TARIFA_TRAMO_1 = 6000
 TARIFA_TRAMO_2 = 9000
 VALOR_KG_ADICIONAL = 800
@@ -29,7 +29,14 @@ class NacionalStrategy(ZonaStrategy):
     def calcular_recargo(self, tarifa_base: float) -> float:
         return tarifa_base + (tarifa_base * self.porcentaje)
 
-# Función de Redondeo Matemática Correcta (R8)
+# Solicitud de Cambio Parte 8: Estrategia para Zona Insular (San Andrés - 70% recargo)
+class InsularStrategy(ZonaStrategy):
+    def __init__(self, porcentaje: float):
+        self.porcentaje = porcentaje
+    def calcular_recargo(self, tarifa_base: float) -> float:
+        return tarifa_base + (tarifa_base * self.porcentaje)
+
+# Función de Redondeo Matemática Correcta
 def redondear_centena(valor: float) -> int:
     residuo = valor % 100
     if residuo >= 50:
@@ -37,7 +44,7 @@ def redondear_centena(valor: float) -> int:
     else:
         return int(valor - residuo)
 
-# Función principal refactorizada (v2.0.0)
+# Función principal calc con soporte para Zona Insular
 def calc(p: float, z: str, c: str, d: int, cup: str = None, pmax: int = 50, l1: int = 3, l2: int = 10, rr: float = 0.15, rn: float = 0.50, desc_vip: float = 0.15) -> int:
     if p <= 0 or p > pmax:
         raise ValueError("peso invalido")
@@ -52,17 +59,18 @@ def calc(p: float, z: str, c: str, d: int, cup: str = None, pmax: int = 50, l1: 
     else:
         t = TARIFA_TRAMO_2 + (p - l2) * VALOR_KG_ADICIONAL
         
-    # 2. Aplicación de Estrategia por Zona
+    # 2. Aplicación de Estrategia por Zona (Incluye insular con 70%)
     estrategias_zona = {
         "urbana": UrbanaStrategy(),
         "rural": RuralStrategy(rr),
-        "nacional": NacionalStrategy(rn)
+        "nacional": NacionalStrategy(rn),
+        "insular": InsularStrategy(0.70)
     }
     if z not in estrategias_zona:
         raise ValueError("zona invalida")
     t = estrategias_zona[z].calcular_recargo(t)
     
-    # 3. Descuentos de Cliente y Cupón (B=1: Sucesivos)
+    # 3. Descuentos de Cliente
     if c == "frecuente":
         t = t - (t * 0.05)
     elif c == "vip":
@@ -70,12 +78,17 @@ def calc(p: float, z: str, c: str, d: int, cup: str = None, pmax: int = 50, l1: 
     elif c != "normal":
         raise ValueError("cliente invalido")
         
-    if cup == "ENVIO10":
-        t = t - (t * 0.10)
-    elif cup is not None:
-        pass  # F=8: Se ignora cupón inexistente
+    # La zona insular no acepta cupones de descuento
+    if z != "insular":
+        if cup == "ENVIO10":
+            t = t - (t * 0.10)
+        elif cup is not None:
+            pass  
+    else:
+        if cup is not None:
+            pass  # Se ignoran los cupones para la zona insular
         
-    # 4. Recargo de Fin de Semana (E=1: Después de descuentos, d >= 6 cubre sábado y domingo)
+    # 4. Recargo de Fin de Semana
     if d >= 6:
         t = t + RECARGO_FINDE
         

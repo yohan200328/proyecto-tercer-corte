@@ -15,9 +15,6 @@ def test_cp09_peso_mayor_pmax():
         calc(50.01, "urbana", "normal", 1)
 
 # Casos de validación de zona y día (R2)
-def test_cp19_zona_insular_no_soportada_v1():
-    with pytest.raises(ValueError):
-        calc(4, "insular", "normal", 1)
 
 def test_cp20_dia_mayor_siete():
     with pytest.raises(ValueError):
@@ -86,3 +83,14 @@ def test_cp21_costo_minimo_aplicado():
 
 def test_cp22_redondeo_hacia_arriba_50():
     assert calc(4, "urbana", "frecuente", 1) == 8600
+
+def test_zona_insular_sin_cupon():
+    # Peso 2kg (6000), Zona insular (+70% = 10200) -> Resultado esperado 10200
+    resultado = calc(p=2, z="insular", c="normal", d=1)
+    assert resultado == 10200
+
+def test_zona_insular_ignora_cupon():
+    # Verifica que pasar un cupón en zona insular no altere el valor
+    res_con_cupon = calc(p=2, z="insular", c="normal", d=1, cup="ENVIO10")
+    res_sin_cupon = calc(p=2, z="insular", c="normal", d=1)
+    assert res_con_cupon == res_sin_cupon
